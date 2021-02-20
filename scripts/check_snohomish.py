@@ -1,13 +1,12 @@
 #!python3
 
+import argparse
 import sys
 import time
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
-
-from common import CHROMEDRIVER_PATH
 
 SNOHOMISH_VACCINE_URL = 'https://snohomish-county-coronavirus-response-snoco-gis.hub.arcgis.com/pages/covid-19-vaccine'
 ARLINGTON_LINK_TEXT = 'www.signupgenius.com/tabs/13577DF01A0CFEDC5AC5-vaccine3'
@@ -19,8 +18,8 @@ POLL_WAIT_SECONDS = 5 * 60  # Wait between website checks
 PAUSE_SECONDS = 5  # Wait between web page actions
 
 
-def CheckSnohomish():
-    driver = webdriver.Chrome(CHROMEDRIVER_PATH)
+def CheckSnohomish(chromedriver_path):
+    driver = webdriver.Chrome(chromedriver_path)
 
     print('INFO: OPENING SNOHOMISH COUNTY VACCINE PAGE')
     driver.get(SNOHOMISH_VACCINE_URL)
@@ -83,7 +82,13 @@ def CheckSnohomish():
 
 
 def main():
-    while CheckSnohomish() == 0:
+    parser = argparse.ArgumentParser(
+        description='Check Snohomish County Arlington Vaccine web site for updates.')
+    parser.add_argument('--chromedriver', required=True,
+                        help='Path to chromedriver binary')
+    args = parser.parse_args()
+
+    while CheckSnohomish(args.chromedriver) == 0:
         time.sleep(POLL_WAIT_SECONDS)
 
 
