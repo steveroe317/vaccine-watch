@@ -2,12 +2,16 @@
 
 import argparse
 import logging
+import optparse
+import os
 import sys
 import time
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import NoSuchElementException
+
+from twilio.rest import Client as TwilioClient
 
 SNOHOMISH_VACCINE_URL = 'https://snohomish-county-coronavirus-response-snoco-gis.hub.arcgis.com/pages/covid-19-vaccine'
 ARLINGTON_LINK_TEXT = 'www.signupgenius.com/tabs/13577DF01A0CFEDC5AC5-vaccine3'
@@ -17,6 +21,18 @@ SIGNUP_ENDED_MESSAGE = 'The sign up period for this event has ended'
 
 POLL_WAIT_SECONDS = 5 * 60  # Wait between website checks
 PAUSE_SECONDS = 5  # Wait between web page actions
+
+
+def send_sms(message):
+    account_sid = os.environ['TWILIO_ACCOUNT_SID']
+    auth_token = os.environ['TWILIO_AUTH_TOKEN']
+    sms_source = os.environ['TWILIO_ACCOUNT_PHONE']
+    sms_target = os.environ['VACCINE_WATCH_ADMIN_PHONE']
+
+    client = TwilioClient(account_sid, auth_token)
+    message = client.messages.create(
+        body=message, from_=sms_source, to=sms_target)
+    print(message.sid)
 
 
 def CheckSnohomish(chromedriver_path):
@@ -97,6 +113,9 @@ def main():
 
     while CheckSnohomish(args.chromedriver) == 0:
         time.sleep(POLL_WAIT_SECONDS)
+
+    send_sms('Snohomish Arlington vaccine page changed %s'
+             % SNOHOMISH_VACCINE_URL)
 
 
 if __name__ == '__main__':
