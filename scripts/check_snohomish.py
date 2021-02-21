@@ -1,6 +1,7 @@
 #!python3
 
 import argparse
+import logging
 import sys
 import time
 
@@ -10,7 +11,7 @@ from selenium.common.exceptions import NoSuchElementException
 
 SNOHOMISH_VACCINE_URL = 'https://snohomish-county-coronavirus-response-snoco-gis.hub.arcgis.com/pages/covid-19-vaccine'
 ARLINGTON_LINK_TEXT = 'www.signupgenius.com/tabs/13577DF01A0CFEDC5AC5-vaccine3'
-EXPECTED_SIGNUP_TITLE = '02/16/2021 - Arlington Additional(2) COVID-19 Vaccine Patient Sign Up'
+EXPECTED_SIGNUP_BANNER = '02/16/2021 - Arlington Additional(2) COVID-19 Vaccine Patient Sign Up'
 EXPECTED_SIGNUP_STATUS = 'NO SLOTS AVAILABLE. SIGN UP IS FULL.'
 SIGNUP_ENDED_MESSAGE = 'The sign up period for this event has ended'
 
@@ -21,40 +22,40 @@ PAUSE_SECONDS = 5  # Wait between web page actions
 def CheckSnohomish(chromedriver_path):
     driver = webdriver.Chrome(chromedriver_path)
 
-    print('INFO: OPENING SNOHOMISH COUNTY VACCINE PAGE')
+    logging.info('Opening Snohomish county vaccine page')
     driver.get(SNOHOMISH_VACCINE_URL)
     time.sleep(PAUSE_SECONDS)  # Let the user actually see something!
 
-    print('INFO: OPENING ARLINGTON VACCINE SIGNUP PAGE')
+    logging.info('Opening Arlington vaccine signup page')
     try:
         element = driver.find_element_by_link_text(ARLINGTON_LINK_TEXT)
     except NoSuchElementException:
-        print('ERROR: COULD NOT FIND ARLINGTON VACCINE SIGNUP LINK')
+        logging.error('Could not find Arlington vaccine signup link')
         return 1
 
-    print('INFO: Linking to {0}'.format(element.get_property('href')))
+    logging.info('Linking to {0}'.format(element.get_property('href')))
     element.click()
     time.sleep(PAUSE_SECONDS)
 
     try:
         element = driver.find_element_by_link_text("Got it!")
     except NoSuchElementException:
-        print('ERROR: COULD NOT FIND "Got it!" button')
+        logging.warning('Could not find "Got it!" button')
+        driver.stop_client()
         driver.quit()
-        return 1
+        return 0
 
-    print('INFO: Dimissing privacy notification')
+    logging.info('Dimissing privacy notification')
     element.click()
     time.sleep(PAUSE_SECONDS)
 
     try:
         element = driver.find_element(
-            By.XPATH, '//*[text()="{0}"]'.format(EXPECTED_SIGNUP_TITLE))
+            By.XPATH, '//*[text()="{0}"]'.format(EXPECTED_SIGNUP_BANNER))
     except NoSuchElementException:
-        print('INFO: SIGNUP HAS CHANGED')
+        logging.error('Signup banner has changed')
         return 1
-
-    print('INFO: SIGNUP TEXT "{0}"'.format(element.text))
+    logging.info('Signup banner "{0}"'.format(element.text))
 
     found_signup_status = False
     found_signup_ended = False
@@ -72,12 +73,12 @@ def CheckSnohomish(chromedriver_path):
         pass
 
     if found_signup_status or found_signup_ended:
-        print('INFO: SIGNUP OVER "{0}"'.format(element.text))
+        logging.info('Signup over "{0}"'.format(element.text))
         driver.stop_client()
         driver.quit()
         return 0
     else:
-        print('INFO: NEW SIGNUP')
+        logging.error('New signup!!!')
         return 1
 
 
@@ -86,7 +87,13 @@ def main():
         description='Check Snohomish County Arlington Vaccine web site for updates.')
     parser.add_argument('--chromedriver', required=True,
                         help='Path to chromedriver binary')
+    parser.add_argument('--verbose', '-v', action='store_true',
+                        help='Enable verbose logging')
     args = parser.parse_args()
+
+    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s')
+    if args.verbose:
+        logging.getLogger().setLevel(logging.INFO)
 
     while CheckSnohomish(args.chromedriver) == 0:
         time.sleep(POLL_WAIT_SECONDS)
