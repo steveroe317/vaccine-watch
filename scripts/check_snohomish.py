@@ -23,16 +23,16 @@ POLL_WAIT_SECONDS = 5 * 60  # Wait between website checks
 PAUSE_SECONDS = 5  # Wait between web page actions
 
 
-def send_sms(message):
+def send_sms(sms_targets, message_body):
     account_sid = os.environ['TWILIO_ACCOUNT_SID']
     auth_token = os.environ['TWILIO_AUTH_TOKEN']
     sms_source = os.environ['TWILIO_ACCOUNT_PHONE']
-    sms_target = os.environ['VACCINE_WATCH_ADMIN_PHONE']
 
-    client = TwilioClient(account_sid, auth_token)
-    message = client.messages.create(
-        body=message, from_=sms_source, to=sms_target)
-    print(message.sid)
+    for sms_target in sms_targets:
+        client = TwilioClient(account_sid, auth_token)
+        message = client.messages.create(
+            body=message_body, from_=sms_source, to=sms_target)
+        print(message.sid)
 
 
 def CheckSnohomish(chromedriver_path):
@@ -111,11 +111,24 @@ def main():
     if args.verbose:
         logging.getLogger().setLevel(logging.INFO)
 
+    sms_admin_target = os.environ['VACCINE_WATCH_ADMIN_PHONE']
+    sms_alert_target = os.environ['VACCINE_WATCH_ALERT_PHONE']
+
+    send_sms(
+        [sms_admin_target],
+        'Beginning Snohomish County Arlington site watch.')
+
     while CheckSnohomish(args.chromedriver) == 0:
         time.sleep(POLL_WAIT_SECONDS)
 
-    send_sms('Snohomish Arlington vaccine page changed %s'
-             % SNOHOMISH_VACCINE_URL)
+    send_sms(
+        [sms_admin_target, sms_alert_target],
+        'The Snohomish Arlington vaccine page changed % s, please check it.'
+        % SNOHOMISH_VACCINE_URL)
+
+    send_sms(
+        [sms_admin_target],
+        'Ending Snohomish County Arlington site watch.')
 
 
 if __name__ == '__main__':
